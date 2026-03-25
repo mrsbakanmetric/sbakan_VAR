@@ -2,93 +2,99 @@ import streamlit as st
 import datetime
 from PIL import Image
 
-# Sayfa Yapılandırması
-st.set_page_config(page_title="Alkol Kategori Denetimi", page_icon="🥃", layout="wide")
+# 1. Mobil Tasarım Ayarı (Layout 'centered' yaparak ekranın yayılmasını engelliyoruz)
+st.set_page_config(page_title="Saha Denetim", page_icon="🥃", layout="centered")
 
-# --- VERİ YAPISI ---
+# --- CSS: Butonları ve Checkboxları Büyütme ---
+st.markdown("""
+    <style>
+    /* Buton metinlerini büyüt */
+    div.stButton > button {
+        height: 4em;
+        font-size: 20px !important;
+        font-weight: bold;
+        border-radius: 10px;
+    }
+    /* Checkbox (Onay kutusu) metinlerini büyüt */
+    .stCheckbox label {
+        font-size: 22px !important;
+        font-weight: 500;
+        padding: 10px 0px;
+    }
+    /* Selectbox (Arama barı) yüksekliğini artır */
+    .stSelectbox div[data-baseweb="select"] {
+        height: 60px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- VERİ ---
 category_data = {
-    "Viski": ["Johnnie Walker Black Label 70cl", "Chivas Regal 12 YO 70cl", "Jack Daniel's Old No.7 70cl", "Ballantine's Finest 70cl", "Jameson Irish Whiskey 70cl"],
-    "Rakı": ["Yeni Rakı 70cl", "Tekirdağ Altın Seri 70cl", "Yeni Rakı Giz 50cl", "Efe Yaş Üzüm 70cl", "Beylerbeyi Göbek 70cl"]
+    "Viski": ["J. Walker Black 70cl", "Chivas 12 YO 70cl", "Jack Daniel's 70cl", "Ballantine's 70cl"],
+    "Rakı": ["Yeni Rakı 70cl", "Tekirdağ Altın 70cl", "Efe Yaş Üzüm 70cl", "Beylerbeyi Göbek 70cl"]
 }
-
 channels = {
-    "Migros": ["Ataşehir MMM", "Caddebostan Jet", "Beşiktaş 5M", "Mecidiyeköy MMM", "Bahçeşehir 5M", "Suadiye Jet"],
-    "CarrefourSA": ["İstinye Hiper", "Kozyatağı Gurme", "Acıbadem Süper", "Fulya Hiper", "Maltepe Park Hiper"],
-    "Metro": ["Güneşli Toptancı", "Kozyatağı Toptancı", "Pendik Toptancı", "Ayazağa Toptancı"]
+    "Migros": ["Ataşehir MMM", "Caddebostan Jet", "Beşiktaş 5M"],
+    "CarrefourSA": ["İstinye Hiper", "Kozyatağı Gurme", "Acıbadem Süper"],
+    "Metro": ["Güneşli Toptancı", "Kozyatağı Toptancı"]
 }
 
-# --- SESSION STATE ---
-if 'selected_channel' not in st.session_state:
-    st.session_state['selected_channel'] = None
+if 'step' not in st.session_state: st.session_state.step = 1
+if 'channel' not in st.session_state: st.session_state.channel = None
 
-st.title("🥃 B2B Saha Satış: Viski & Rakı Denetimi")
-st.write(f"Sorumlu: **Ahmet Yılmaz** | Tarih: {datetime.date.today().strftime('%d/%m/%Y')}")
-st.divider()
+# --- UYGULAMA AKIŞI ---
 
-# --- 1. KANAL SEÇİMİ (BUTONLAR) ---
-st.header("1. Kanal Seçiniz")
-col1, col2, col3 = st.columns(3)
+# ADIM 1: KANAL SEÇİMİ
+if st.session_state.step == 1:
+    st.subheader("📍 Kanal Seçiniz")
+    for ch in channels.keys():
+        if st.button(ch, use_container_width=True):
+            st.session_state.channel = ch
+            st.session_state.step = 2
+            st.rerun()
 
-with col1:
-    if st.button("🍊 Migros", use_container_width=True):
-        st.session_state['selected_channel'] = "Migros"
-with col2:
-    if st.button("🔵 CarrefourSA", use_container_width=True):
-        st.session_state['selected_channel'] = "CarrefourSA"
-with col3:
-    if st.button("⚪ Metro", use_container_width=True):
-        st.session_state['selected_channel'] = "Metro"
-
-# --- 2. MAĞAZA ARAMA VE SEÇİMİ ---
-if st.session_state['selected_channel']:
-    current_channel = st.session_state['selected_channel']
-    st.divider()
-    
-    st.header(f"2. {current_channel} Mağaza Arama & Seçim")
-    
-    # İPUCU: selectbox zaten arama özelliğine sahiptir.
-    # Ancak kullanıcıya "Yazarak arayabilirsiniz" mesajı vermek deneyimi iyileştirir.
-    store_list = channels[current_channel]
+# ADIM 2: MAĞAZA ARAMA VE SEÇİM
+elif st.session_state.step == 2:
+    st.subheader(f"🏬 {st.session_state.channel} Mağazası")
     
     store_choice = st.selectbox(
-        "Mağaza adını yazın veya listeden seçin:",
-        options=store_list,
-        index=None, # Varsayılan olarak boş başlasın
-        placeholder="Örn: Ataşehir veya Toptancı...",
-        help="Yazmaya başladığınızda sonuçlar filtrelenir."
+        "Mağaza Ara/Seç:",
+        options=channels[st.session_state.channel],
+        index=None,
+        placeholder="Yazmaya başlayın..."
     )
     
+    col1, col2 = st.columns(2)
+    if col1.button("⬅️ Geri"):
+        st.session_state.step = 1
+        st.rerun()
+    
     if store_choice:
-        st.success(f"Seçili Mağaza: **{store_choice}**")
-        st.divider()
+        if col2.button("İlerle ➡️"):
+            st.session_state.store = store_choice
+            st.session_state.step = 3
+            st.rerun()
 
-        # --- 3. ÜRÜN KONTROLLERİ ---
-        st.header("3. Assortment Check")
-        check_results = {}
-
-        tab1, tab2 = st.tabs(["🥃 VİSKİ", "🍶 RAKİ"])
+# ADIM 3: ÜRÜN KONTROLÜ & FOTOĞRAF
+elif st.session_state.step == 3:
+    st.subheader(f"📋 {st.session_state.store}")
+    
+    st.write("### 🥃 VİSKİ")
+    for p in category_data["Viski"]:
+        st.checkbox(p, value=True, key=f"v_{p}")
         
-        with tab1:
-            for product in category_data["Viski"]:
-                check_results[product] = st.checkbox(product, value=True, key=f"v_{product}")
-        
-        with tab2:
-            for product in category_data["Rakı"]:
-                check_results[product] = st.checkbox(product, value=True, key=f"r_{product}")
-
-        st.divider()
-
-        # --- 4. FOTOĞRAF ---
-        st.header("4. Reyon Görseli")
-        uploaded_file = st.file_uploader("Kamerayı aç veya dosya seç", type=['png', 'jpg', 'jpeg'])
-        
-        if uploaded_file:
-            st.image(Image.open(uploaded_file), use_container_width=True)
-
-        st.divider()
-        
-        # --- GÖNDERME ---
-        if st.button("✅ DENETİMİ TAMAMLA", use_container_width=True, type="primary"):
-            st.balloons()
-            st.success(f"{store_choice} denetimi başarıyla sisteme iletildi.")
-            # Burada verileri kaydetme kodu (Google Sheets vb.) çalışacak.
+    st.write("### 🍶 RAKI")
+    for p in category_data["Rakı"]:
+        st.checkbox(p, value=True, key=f"r_{p}")
+    
+    st.divider()
+    
+    st.write("### 📷 FOTOĞRAF")
+    uploaded_file = st.file_uploader("Kamerayı Aç", type=['png', 'jpg', 'jpeg'])
+    
+    if st.button("✅ DENETİMİ BİTİR", use_container_width=True, type="primary"):
+        st.balloons()
+        st.success("Veriler iletildi!")
+        if st.button("Yeni Denetim"):
+            st.session_state.step = 1
+            st.rerun()
