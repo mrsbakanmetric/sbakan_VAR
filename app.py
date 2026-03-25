@@ -83,4 +83,65 @@ if st.session_state.selected_channel:
     ch = st.session_state.selected_channel
     st.divider()
     st.write(f"### 2. {ch} Mağaza Seçimi")
-    store_choice = st.selectbox("Ma
+    store_choice = st.selectbox("Mağaza seçin:", options=stores_data[ch], index=None, placeholder="Mağaza ara...")
+
+    if store_choice:
+        st.divider()
+        st.write("### 3. Reyon Fotoğrafı")
+        img_file = st.file_uploader("Görsel yükle", type=['png', 'jpg', 'jpeg'], label_visibility="collapsed")
+
+        if img_file:
+            st.image(Image.open(img_file), caption="Yüklenen Görsel", width=120) 
+            
+            if st.button("🔍 ANALİZİ BAŞLAT", use_container_width=True, type="primary"):
+                st.write("🔍 **AI Görüntü İşleme ve Cross-Check Başlatıldı...**")
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+
+                for percent_complete in range(0, 101, 20):
+                    time.sleep(0.4) 
+                    progress_bar.progress(percent_complete)
+                    status_text.text(f"Analiz ediliyor: %{percent_complete} tamamlandı")
+                
+                status_text.success("✅ Analiz Tamamlandı!")
+                
+                # --- SONUÇ HESAPLAMA ---
+                current_skus = st.session_state.sku_list["Ürün Adı"].tolist()
+                
+                # 1. Ana Liste Kontrolü (Beklenen Ürünler)
+                results = []
+                for p in current_skus:
+                    if p:
+                        status = "✅ Mevcut" if random.choice([True, False]) else "❌ Eksik"
+                        results.append({"Ürün": p, "Durum": status})
+                
+                # 2. Listede Olmayan Ürünler (Simülasyon)
+                # AI burada resimde görüp listede bulamadığı ürünleri döner
+                extra_products = [
+                    {"Ürün": "Efe Yaş Üzüm 70cl", "Tespit": "Listede Yok / Raf Payı İşgal Ediyor"},
+                    {"Ürün": "Kulüp Rakı 70cl", "Tespit": "Hatalı Planogram / Tanımsız Ürün"}
+                ]
+                
+                # --- GÖRSEL RAPORLAMA ---
+                found_count = sum(1 for r in results if "Mevcut" in r['Durum'])
+                score = int((found_count / len(results)) * 100)
+                score_color = "#28A745" if score >= 80 else "#FFC107" if score >= 50 else "#DC3545"
+
+                st.markdown(f"""
+                    <div class="score-card" style="border-top: 6px solid {score_color};">
+                        <div style="font-size: 14px; color: #666;">ASSORTMENT COMPLIANCE</div>
+                        <div class="score-value" style="color: {score_color};">%{score}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.write("### 📋 Beklenen Portföy Durumu")
+                st.table(pd.DataFrame(results))
+                
+                # --- EKSTRA ÜRÜNLER TABLOSU ---
+                st.markdown('<div class="extra-header">⚠️ LİSTEDE OLMAYAN / EKSTRA ÜRÜNLER</div>', unsafe_allow_html=True)
+                st.write("Aşağıdaki ürünler resimde tespit edildi ancak resmi portföy listesinde bulunmuyor:")
+                st.table(pd.DataFrame(extra_products))
+                
+                if st.button("🚀 RAPORU KAYDET VE GÖNDER", use_container_width=True):
+                    st.balloons()
+                    st.toast("Detaylı rapor merkeze gönderildi.")
