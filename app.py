@@ -41,6 +41,6 @@ if channel_choice != "Seçiniz":
 
     if st.button("Denetimi Tamamla"):
         st.success("Veriler başarıyla gönderildi!")
-        st.json({"magaza": store_choice, "sonuc": check_results})//
+        st.json({"magaza": store_choice, "sonuc": check_results})
 
 
