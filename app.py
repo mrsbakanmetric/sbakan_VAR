@@ -13,6 +13,7 @@ st.markdown("""
     .main-title { font-size: 30px; font-weight: bold; text-align: center; color: #1E1E1E; margin-bottom: 5px; }
     .sub-title { font-size: 16px; text-align: center; color: #666; margin-bottom: 25px; }
     
+    /* Buton Stilleri */
     div.stButton > button {
         height: 3.5em;
         font-size: 18px !important;
@@ -30,14 +31,15 @@ st.markdown("""
         margin: 15px 0px;
     }
     .score-value { font-size: 45px; font-weight: bold; }
-    .extra-header { color: #D9534F; font-weight: bold; margin-top: 20px; border-bottom: 2px solid #D9534F; }
+    .extra-header { color: #D9534F; font-weight: bold; margin-top: 25px; border-bottom: 2px solid #D9534F; padding-bottom: 5px; }
+    
+    /* Eksik ürünler için özel stil (Opsiyonel: Tabloyu renklendirmek zor olduğu için metin odaklı gidiyoruz) */
     </style>
     """, unsafe_allow_html=True)
 
 # --- 1. SİDEBAR: DİNAMİK PORTFÖY YÖNETİMİ ---
 with st.sidebar:
     st.subheader("⚙️ Portföy Yönetimi")
-    st.caption("Beklenen SKU'ları düzenleyin. Analiz sırasında bu listede olmayanlar 'Ekstra' sayılacaktır.")
     
     if 'sku_list' not in st.session_state:
         st.session_state.sku_list = pd.DataFrame([
@@ -64,7 +66,6 @@ if 'selected_channel' not in st.session_state:
 
 st.write("### 1. Kanal Seçiniz")
 c1, c2, c3 = st.columns(3)
-
 with c1:
     if st.button("🍊 Migros", use_container_width=True): st.session_state.selected_channel = "Migros"
 with c2:
@@ -78,7 +79,7 @@ stores_data = {
     "Metro": ["Güneşli Toptancı", "Kozyatağı Toptancı"]
 }
 
-# --- 3. MAĞAZA VE ANALİZ AKIŞI ---
+# --- 3. MAĞAZA VE ANALİZ ---
 if st.session_state.selected_channel:
     ch = st.session_state.selected_channel
     st.divider()
@@ -94,11 +95,10 @@ if st.session_state.selected_channel:
             st.image(Image.open(img_file), caption="Yüklenen Görsel", width=120) 
             
             if st.button("🔍 ANALİZİ BAŞLAT", use_container_width=True, type="primary"):
-                st.write("🔍 **AI Görüntü İşleme ve Cross-Check Başlatıldı...**")
                 progress_bar = st.progress(0)
                 status_text = st.empty()
 
-                for percent_complete in range(0, 101, 20):
+                for percent_complete in range(0, 101, 25):
                     time.sleep(0.4) 
                     progress_bar.progress(percent_complete)
                     status_text.text(f"Analiz ediliyor: %{percent_complete} tamamlandı")
@@ -107,24 +107,23 @@ if st.session_state.selected_channel:
                 
                 # --- SONUÇ HESAPLAMA ---
                 current_skus = st.session_state.sku_list["Ürün Adı"].tolist()
-                
-                # 1. Ana Liste Kontrolü (Beklenen Ürünler)
                 results = []
+                
                 for p in current_skus:
                     if p:
-                        status = "✅ Mevcut" if random.choice([True, False]) else "❌ Eksik"
-                        results.append({"Ürün": p, "Durum": status})
+                        is_available = random.choice([True, False])
+                        if is_available:
+                            results.append({"Ürün": p, "Durum": "✅ Mevcut", "Aksiyon": "-"})
+                        else:
+                            # EKSİK ÜRÜN İÇİN SEPET İKONU EKLEME
+                            results.append({"Ürün": p, "Durum": "❌ Eksik", "Aksiyon": "🛒 Sipariş Oluştur"})
                 
-                # 2. Listede Olmayan Ürünler (Simülasyon)
-                # AI burada resimde görüp listede bulamadığı ürünleri döner
-                extra_products = [
-                    {"Ürün": "Efe Yaş Üzüm 70cl", "Tespit": "Listede Yok / Raf Payı İşgal Ediyor"},
-                    {"Ürün": "Kulüp Rakı 70cl", "Tespit": "Hatalı Planogram / Tanımsız Ürün"}
-                ]
+                # Analiz dışı (Ekstra) Ürünler
+                extra_products = [{"Ürün": "Efe Yaş Üzüm 70cl", "Tespit": "Tanımsız Ürün"}]
                 
-                # --- GÖRSEL RAPORLAMA ---
+                # Skor Kartı
                 found_count = sum(1 for r in results if "Mevcut" in r['Durum'])
-                score = int((found_count / len(results)) * 100)
+                score = int((found_count / len(results)) * 100) if results else 0
                 score_color = "#28A745" if score >= 80 else "#FFC107" if score >= 50 else "#DC3545"
 
                 st.markdown(f"""
@@ -134,14 +133,13 @@ if st.session_state.selected_channel:
                     </div>
                     """, unsafe_allow_html=True)
                 
+                # --- TABLO GÖSTERİMİ ---
                 st.write("### 📋 Beklenen Portföy Durumu")
                 st.table(pd.DataFrame(results))
                 
-                # --- EKSTRA ÜRÜNLER TABLOSU ---
                 st.markdown('<div class="extra-header">⚠️ LİSTEDE OLMAYAN / EKSTRA ÜRÜNLER</div>', unsafe_allow_html=True)
-                st.write("Aşağıdaki ürünler resimde tespit edildi ancak resmi portföy listesinde bulunmuyor:")
                 st.table(pd.DataFrame(extra_products))
                 
-                if st.button("🚀 RAPORU KAYDET VE GÖNDER", use_container_width=True):
+                if st.button("🚀 RAPORU TAMAMLA", use_container_width=True):
                     st.balloons()
-                    st.toast("Detaylı rapor merkeze gönderildi.")
+                    st.toast("Rapor ve Sipariş Önerileri Kaydedildi.")
