@@ -75,4 +75,17 @@ if st.session_state.channel:
                 
                 # Burada AI sonucunu simüle ediyoruz (Gerçekte bu kısım bir modelden gelir)
                 results = []
-                for _, row in sku
+                for _, row in sku_df.iterrows():
+                    # Rastgele var/yok simülasyonu (Gerçekte AI çıktısı olacak)
+                    status = "✅ Mevcut" if "70cl" in row['Ürün Adı'] else "❌ Eksik"
+                    results.append({"Ürün": row['Ürün Adı'], "Durum": status})
+                
+                res_df = pd.DataFrame(results)
+                
+                # Sonuçları Tablo Olarak Göster
+                st.table(res_df)
+                
+                available_count = sum(1 for r in results if "Mevcut" in r['Durum'])
+                st.metric("Bulunabilirlik Skoru", f"%{int((available_count/len(results))*100)}")
+                
+                st.success("Analiz tamamlandı ve merkeze raporlandı!")
