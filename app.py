@@ -42,9 +42,5 @@ if channel_choice != "Seçiniz":
     if st.button("Denetimi Tamamla"):
         st.success("Veriler başarıyla gönderildi!")
         st.json({"magaza": store_choice, "sonuc": check_results})//
-//  Untitled.swift
-//  tets
-//
-//  Created by Satilmis Bakan on 25.03.2026.
-//
+
 
