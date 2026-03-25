@@ -9,7 +9,7 @@ st.set_page_config(page_title="AI Saha Denetimi", page_icon="🥃", layout="cent
 # --- ŞIK TASARIM (CSS) ---
 st.markdown("""
     <style>
-    .main-title { font-size: 28px; font-weight: bold; text-align: center; color: #1E1E1E; }
+    .main-title { font-size: 28px; font-weight: bold; text-align: center; margin-bottom: 20px; }
     .score-card {
         background-color: #ffffff;
         padding: 15px;
@@ -19,27 +19,42 @@ st.markdown("""
         margin: 15px 0px;
     }
     .score-value { font-size: 45px; font-weight: bold; }
-    /* Görselin etrafına ince bir çerçeve */
-    .img-preview { border: 1px solid #ddd; border-radius: 8px; padding: 5px; display: inline-block; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 1. SİDEBAR (SKU LİSTESİ) ---
+# --- 1. SİDEBAR: DİNAMİK SKU YÖNETİMİ ---
 with st.sidebar:
-    st.subheader("⚙️ SKU Yönetimi")
-    uploaded_sku = st.file_uploader("Yeni Liste Yükle", type=['xlsx', 'csv'])
+    st.subheader("⚙️ SKU Portföy Yönetimi")
     
-    if uploaded_sku:
-        sku_df = pd.read_csv(uploaded_sku) if uploaded_sku.name.endswith('.csv') else pd.read_excel(uploaded_sku)
-    else:
-        sku_df = pd.DataFrame({"Ürün": ["Chivas 12 YO", "JW Black Label", "Jack Daniel's 70cl", "Yeni Rakı 70cl", "Tekirdağ Altın", "Beylerbeyi Göbek"]})
+    # Başlangıç verisi (Eğer session_state'de yoksa oluştur)
+    if 'sku_list' not in st.session_state:
+        st.session_state.sku_list = pd.DataFrame([
+            {"Ürün Adı": "Chivas Regal 12 YO"},
+            {"Ürün Adı": "JW Black Label"},
+            {"Ürün Adı": "Jack Daniel's 70cl"},
+            {"Ürün Adı": "Yeni Rakı 70cl"},
+            {"Ürün Adı": "Tekirdağ Altın Seri"},
+            {"Ürün Adı": "Beylerbeyi Göbek"}
+        ])
+
+    st.write("Aşağıdaki listeden ürün ekleyebilir (en alt satır), silebilir (seçip delete) veya isim değiştirebilirsiniz:")
     
+    # DATA EDITOR: Manuel ekleme/silme imkanı tanır
+    edited_sku = st.data_editor(
+        st.session_state.sku_list,
+        num_rows="dynamic", # Satır ekleme/silme özelliğini açar
+        use_container_width=True,
+        key="sku_editor"
+    )
+    
+    # Güncel listeyi session_state'e kaydet
+    st.session_state.sku_list = edited_sku
+
     st.divider()
-    st.caption("📋 DENETLENECEK ÜRÜNLER")
-    st.table(sku_df)
+    st.caption("💡 İpucu: Tablonun altındaki '+' butonuna basarak yeni ürün ekleyebilirsiniz.")
 
 # --- 2. ANA EKRAN ---
-st.markdown('<div class="main-title">📸 AI SAHA ASİSTANI</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">📸 AI SAHA DENETİM ASİSTANI</div>', unsafe_allow_html=True)
 
 col_a, col_b = st.columns(2)
 with col_a:
@@ -53,8 +68,7 @@ if channel and store:
     img_file = st.file_uploader("Kamerayı aç / Görsel seç", type=['png', 'jpg', 'jpeg'], label_visibility="collapsed")
 
     if img_file:
-        # FOTOĞRAFI 10'DA 1 ORANINDA KÜÇÜLTME (Örn: 70 pixel genişlik)
-        # use_container_width=False yaparak genişliği biz belirliyoruz
+        # Fotoğrafı 10'da 1 oranında küçültme (Önizleme)
         st.image(Image.open(img_file), caption="Yüklenen Görsel", width=120) 
         
         # --- OTOMATİK ANALİZ ---
@@ -62,26 +76,33 @@ if channel and store:
             time.sleep(2)
             status.update(label="✅ Analiz Tamamlandı!", state="complete")
         
-        # --- SKOR VE SONUÇLAR ---
+        # --- SKOR VE SONUÇLAR (Dinamik Listeye Göre) ---
         results = []
-        for p in sku_df.iloc[:, 0]:
-            status = "✅ Mevcut" if len(p) % 2 == 0 else "❌ Eksik"
-            results.append({"Ürün": p, "Durum": status})
+        # Sidebar'da düzenlenen güncel listeyi kullanıyoruz
+        current_skus = st.session_state.sku_list["Ürün Adı"].tolist()
         
-        found_count = sum(1 for r in results if "Mevcut" in r['Durum'])
-        score = int((found_count / len(results)) * 100)
-        score_color = "#28A745" if score >= 80 else "#FFC107" if score >= 50 else "#DC3545"
+        for p in current_skus:
+            if p: # Boş satırları atla
+                status = "✅ Mevcut" if len(p) % 2 == 0 else "❌ Eksik"
+                results.append({"Ürün": p, "Durum": status})
+        
+        if results:
+            found_count = sum(1 for r in results if "Mevcut" in r['Durum'])
+            score = int((found_count / len(results)) * 100)
+            score_color = "#28A745" if score >= 80 else "#FFC107" if score >= 50 else "#DC3545"
 
-        st.markdown(f"""
-            <div class="score-card" style="border-top: 6px solid {score_color};">
-                <div style="font-size: 14px; color: #666;">BULUNABİLİRLİK</div>
-                <div class="score-value" style="color: {score_color};">%{score}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.write("### 📊 Detay Listesi")
-        st.table(pd.DataFrame(results))
-        
-        if st.button("🚀 VERİLERİ GÖNDER", use_container_width=True, type="primary"):
-            st.balloons()
-            st.toast("Rapor iletildi.")
+            st.markdown(f"""
+                <div class="score-card" style="border-top: 6px solid {score_color};">
+                    <div style="font-size: 14px; color: #666;">GÜNCEL BULUNABİLİRLİK</div>
+                    <div class="score-value" style="color: {score_color};">%{score}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.write("### 📊 Detay Listesi")
+            st.table(pd.DataFrame(results))
+            
+            if st.button("🚀 VERİLERİ GÖNDER", use_container_width=True, type="primary"):
+                st.balloons()
+                st.toast("Rapor iletildi.")
+        else:
+            st.warning("Lütfen sol panelden denetlenecek ürün ekleyin.")
